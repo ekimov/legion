@@ -77,6 +77,11 @@ airflow_s3_url: 's3://epm-legion-data-ci/'
 airflow_expected_output: 'expected-data/'
 airflow_pvc: 200m
 
+collector:
+  replicas: 1
+  bucket: epm-legion-data-ci
+  region: us-east-2
+
 # Addons
 dashboard:
   version: "1.8.3"
