@@ -135,3 +135,16 @@ class Utils:
             raise Exception('Info about model {!r} v {!r} not found'.format(model_id, model_version))
 
         return founded[0]
+
+    @staticmethod
+    def wait_up_to_second(second, time_template=None):
+        """
+        Wait up to second then generate time from template
+
+        :param second: target second
+        :type second: int
+        :param time_template: (Optional) time template
+        :type time_template: str
+        :return: None or str -- time from template
+        """
+        return ''
