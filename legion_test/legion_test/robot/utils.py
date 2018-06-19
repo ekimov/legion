@@ -17,8 +17,10 @@
 Robot test library - utils
 """
 
+import datetime
 import socket
 import requests
+import time
 
 
 class Utils:
@@ -147,4 +149,17 @@ class Utils:
         :type time_template: str
         :return: None or str -- time from template
         """
-        return ''
+        current_second = datetime.datetime.now().second
+        target_second = int(second)
+
+        if current_second > target_second:
+            sleep_time = 60 - (current_second - target_second)
+        else:
+            sleep_time = target_second - current_second
+
+        if sleep_time:
+            print('Waiting {} second(s)'.format(sleep_time))
+            time.sleep(sleep_time)
+
+        if time_template:
+            return datetime.datetime.utcnow().strftime(time_template)
