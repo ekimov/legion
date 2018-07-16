@@ -15,9 +15,9 @@
 #
 FROM legion/base-python-image
 
-RUN apk add --update \
-    ca-certificates curl openrc docker \
-    nginx pcre pcre-dev supervisor
+RUN apt-get update && apt-get install \
+    ca-certificates curl docker \
+    nginx libpcre3 libpcre3-dev supervisor
 
 EXPOSE 5000
 
@@ -45,4 +45,4 @@ ENTRYPOINT ["/usr/local/bin/chmod-docker-and-run-edi.sh"]
 ARG pip_extra_index_params=""
 ARG pip_legion_version_string=""
 
-RUN pip install --disable-pip-version-check $pip_extra_index_params legion$pip_legion_version_string
+RUN pip3 install --disable-pip-version-check $pip_extra_index_params legion$pip_legion_version_string
