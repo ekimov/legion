@@ -19,21 +19,17 @@ FROM legion/base-python-image
 ENV AIRFLOW_HOME /home/airflow
 
 RUN apt-get update && apt-get install -y \
-    cron libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
-    build-essential libblas-dev liblapack-dev \
-    iputils-ping openssh-client libpq-dev sshpass redis-tools
+    default-jdk cron libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
+    build-essential libblas-dev liblapack-dev libmysqlclient-dev \
+    iputils-ping openssh-client libpq-dev sshpass redis-tools && \
+    apt-get clean && apt-get autoclean
 
 RUN service cron stop \
     && useradd -ms /bin/bash -d ${AIRFLOW_HOME} airflow
 
-RUN pip3 install cryptography \
-    && pip3 install apache-airflow[postgres,jdbc,password,mysql,celery,redis,s3]==1.9.0 \
-    && pip3 install pyOpenSSL \
-    && pip3 install ndg-httpsclient \
-    && pip3 install pyasn1 \
-    && pip3 install psycopg2-binary \
-    && pip3 install redis \
-    && pip3 install hiredis
+RUN pip3 install --disable-pip-version-check cryptography \
+    && pip3 install --disable-pip-version-check apache-airflow[postgres,jdbc,password,mysql,celery,redis,s3]==1.9.0 \
+    pyOpenSSL ndg-httpsclient pyasn1 psycopg2-binary redis hiredis requests
 
 RUN cd  /home/airflow && \
     mkdir temp && cd temp && \
@@ -58,9 +54,9 @@ ARG pip_extra_index_params=""
 ARG pip_legion_version_string=""
 
 COPY requirements.txt /home/airflow/requirements.txt
-RUN pip install -r /home/airflow/requirements.txt && \
-    pip install $pip_extra_index_params legion$pip_legion_version_string && \
-    pip install $pip_extra_index_params legion_airflow$pip_legion_version_string
+RUN pip3 install -r /home/airflow/requirements.txt && \
+    pip3 install $pip_extra_index_params legion$pip_legion_version_string && \
+    pip3 install $pip_extra_index_params legion_airflow$pip_legion_version_string
 
 RUN chown -R airflow: ${AIRFLOW_HOME} && chmod -R 775 ${AIRFLOW_HOME} && \
     chmod a+x /home/airflow/init.sh
