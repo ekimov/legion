@@ -16,8 +16,15 @@
 FROM legion/base-python-image
 
 RUN apt-get update && apt-get install -y \
-    ca-certificates curl docker \
-    nginx libpcre3 libpcre3-dev supervisor
+    ca-certificates curl apt-transport-https nginx \
+    libpcre3 libpcre3-dev supervisor software-properties-common
+
+# Install Docker for model interspection
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
+    apt-get update && apt-get install -y  docker-ce
+
+RUN pip3 install --disable-pip-version-check --upgrade uwsgi
 
 EXPOSE 5000
 
@@ -35,13 +42,13 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 ENV UWSGI_INI /usr/lib/python3.6/site-packages/legion/uwsgi.ini
 
+# Install Legion
+ARG pip_extra_index_params=""
+ARG pip_legion_version_string=""
+RUN pip3 install --disable-pip-version-check $pip_extra_index_params legion$pip_legion_version_string
+
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf" ]
 
 COPY chmod-docker-and-run-edi.sh /usr/local/bin/chmod-docker-and-run-edi.sh
 RUN chmod a+rwx /usr/local/bin/chmod-docker-and-run-edi.sh
 ENTRYPOINT ["/usr/local/bin/chmod-docker-and-run-edi.sh"]
-
-ARG pip_extra_index_params=""
-ARG pip_legion_version_string=""
-
-RUN pip3 install --disable-pip-version-check $pip_extra_index_params legion$pip_legion_version_string
