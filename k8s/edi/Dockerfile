@@ -35,8 +35,6 @@ COPY nginx.conf /etc/nginx/conf.d/
 COPY uwsgi.ini /etc/uwsgi/
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-ENV UWSGI_INI /usr/local/lib/python3.6/dist-packages/legion/edi/uwsgi.ini
-
 # Install Legion
 ARG pip_extra_index_params=""
 ARG pip_legion_version_string=""
