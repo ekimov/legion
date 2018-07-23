@@ -19,9 +19,9 @@ FROM legion/base-python-image
 ENV AIRFLOW_HOME /home/airflow
 
 RUN apt-get update && apt-get install -y \
-    default-jdk cron libkrb5-dev libsasl2-dev libssl-dev libffi-dev \
-    build-essential libblas-dev liblapack-dev libmysqlclient-dev \
-    iputils-ping openssh-client libpq-dev sshpass redis-tools && \
+    cron libkrb5-dev libsasl2-dev libssl-dev libffi-dev  iputils-ping \
+    build-essential libblas-dev liblapack-dev libmysqlclient-dev sudo \
+    iputils-ping openssh-client libpq-dev sshpass redis-tools netcat && \
     apt-get clean && apt-get autoclean
 
 RUN service cron stop \
