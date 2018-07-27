@@ -19,6 +19,7 @@ legion k8s properties class
 import base64
 import logging
 import time
+import functools
 
 import kubernetes
 import kubernetes.client
@@ -106,8 +107,19 @@ class K8SPropertyStorage:
         names = [
             resource.metadata.labels[legion.containers.headers.DOMAIN_MODEL_PROPERTY_TYPE]
             for resource in resources
+            if K8SPropertyStorage.is_valid_object(resource)
         ]
         return names
+
+    @staticmethod
+    def is_valid_object(obj):
+        """
+        Check that obj is valid K8S object
+
+        :param obj: kubernetes object
+        :return: bool -- is valid K8S object or not
+        """
+        return obj.metadata.labels and legion.containers.headers.DOMAIN_MODEL_PROPERTY_TYPE in obj.metadata.labels
 
     @property
     def k8s_name(self):
@@ -385,6 +397,34 @@ class K8SPropertyStorage:
         return '<{} k8s_name={!r}, k8s_namespace={!r}, data={!r}>' \
             .format(self.__class__.__name__, self._storage_name, self._k8s_namespace, self._state)
 
+    def is_watched_object(self, obj):
+        """
+        Check if K8S object is a target watch item
+
+        :param obj: kubernetes object
+        :return: bool -- is target or not
+        """
+        return self.is_valid_object(obj) and obj.metadata.name == self._storage_name
+
+    def watch(self):
+        """
+        Get generator that watches for storage updates and yields EVENT and new data as dict
+
+        :return: None
+        """
+        with self._build_k8s_resource_watch() as watch:
+            for (event_type, event_object) in watch.stream:
+                self.load()
+                yield (event_type, self.data)
+
+    def _build_k8s_resource_watch(self):
+        """
+        Get K8S resource watch object
+
+        :return: :py:class:`legion.k8s.watch.ResourceWatch` -- resource watch
+        """
+        pass
+
 
 class K8SConfigMapStorage(K8SPropertyStorage):
     """
@@ -396,19 +436,23 @@ class K8SConfigMapStorage(K8SPropertyStorage):
         """
         Find K8S resources
 
-        :return: :py:class:`kubernetes.client.V1ConfigMap` -- K8S object
+        :return: list[:py:class:`kubernetes.client.V1ConfigMap`] -- K8S objects
         """
         client = legion.k8s.utils.build_client()
         core_api = kubernetes.client.CoreV1Api(client)
         objects = core_api.list_namespaced_config_map(k8s_namespace).items
 
-        objects = [
-            obj
-            for obj in objects
-            if obj.metadata.labels and legion.containers.headers.DOMAIN_MODEL_PROPERTY_TYPE in obj.metadata.labels
-        ]
-
         return objects
+
+    def _build_k8s_resource_watch(self):
+        """
+        Get K8S resource watch object
+
+        :return: :py:class:`legion.k8s.watch.ResourceWatch` -- resource watch
+        """
+        return legion.k8s.watch.ResourceWatch(self._core_api.list_namespaced_config_map,
+                                              namespace=self.k8s_namespace_or_default,
+                                              filter_callable=self.is_watched_object)
 
     def _read_k8s_resource(self):
         """
@@ -518,19 +562,23 @@ class K8SSecretStorage(K8SPropertyStorage):
         """
         Find K8S resources
 
-        :return: :py:class:`kubernetes.client.V1Secret` -- K8S object
+        :return: list[:py:class:`kubernetes.client.V1Secret`] -- K8S objects
         """
         client = legion.k8s.utils.build_client()
         core_api = kubernetes.client.CoreV1Api(client)
         objects = core_api.list_namespaced_secret(k8s_namespace).items
 
-        objects = [
-            obj
-            for obj in objects
-            if obj.metadata.labels and legion.containers.headers.DOMAIN_MODEL_PROPERTY_TYPE in obj.metadata.labels
-        ]
-
         return objects
+
+    def _build_k8s_resource_watch(self):
+        """
+        Get K8S resource watch object
+
+        :return: :py:class:`legion.k8s.watch.ResourceWatch` -- resource watch
+        """
+        return legion.k8s.watch.ResourceWatch(self._core_api.list_namespaced_secret,
+                                              namespace=self.k8s_namespace_or_default,
+                                              filter_callable=self.is_watched_object)
 
     def _read_k8s_resource(self):
         """

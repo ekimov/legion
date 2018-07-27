@@ -483,11 +483,11 @@ class Model:
         """
         Logic for background operations thread
 
-        :return:
+        :return: None -- properties update handler
         """
-        # TODO: Add watch here
-        self._on_property_update_callback()
-        time.sleep(1)
+        for event, new_data in self.properties.watch():
+            LOGGER.info('Model have got information that properties storage had got update: {}'.format(event))
+            self._on_property_update_callback()
 
     def start_background_operations(self):
         """
