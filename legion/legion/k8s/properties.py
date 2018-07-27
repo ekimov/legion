@@ -423,7 +423,7 @@ class K8SPropertyStorage:
                 self.load()
                 yield (event_type, self.data)
 
-    def _update_thread(self):
+    def update_thread(self):
         """
         Process update callback logic
 
@@ -469,7 +469,7 @@ class K8SPropertyStorage:
 
         self._properties_update_thread = threading.Thread(name='model-properties-update',
                                                           daemon=True,
-                                                          target=self._update_thread)
+                                                          target=self.update_thread)
         self._properties_update_thread.start()
 
     def _build_k8s_resource_watch(self):
