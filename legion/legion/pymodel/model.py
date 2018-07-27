@@ -19,9 +19,7 @@ Python model
 import json
 import sys
 import os
-import threading
 import time
-import typing
 import zipfile
 
 import logging
@@ -195,7 +193,6 @@ class Model:
         self._endpoints = {}  # type: dict or None
         self._path = None  # type: str or None
 
-        self._properties_update_thread = None  # type: threading.Thread or None
         self._on_property_update_callback = None  # type: typing.Callable[[], None] or None
 
         storage_name = model_properties_storage_name(self.model_id, self.model_version)
@@ -479,50 +476,24 @@ class Model:
         self._export(apply_func, prepare_func, None, False, endpoint)
         return self
 
-    def _model_properties_update(self):
+    @property
+    def on_property_update_callback(self):
         """
-        Logic for background operations thread
+        Get registered callback
 
-        :return: None -- properties update handler
+        :return: :py:class:`Callable[[], None]` -- callback function
         """
-        for event, new_data in self.properties.watch():
-            LOGGER.info('Model have got information that properties storage had got update: {}'.format(event))
-            self._on_property_update_callback()
+        return self._on_property_update_callback
 
-    def start_background_operations(self):
+    def on_property_update(self, callable):
         """
-        Start background model operations
+        Get registered callback
 
-        :return: None
-        """
-        if self._properties_update_thread:
-            raise Exception('Background operations already have been started')
-
-        if not self._on_property_update_callback:
-            LOGGER.info('Callback has not been registered in this model, skipping thread starting')
-            return
-
-        if not self.properties.last_load_time:
-            LOGGER.info('Properties has not been loaded, so watch thread will not be started')
-            return
-
-        self._properties_update_thread = threading.Thread(name='model-properties-update',
-                                                          daemon=True,
-                                                          target=self._model_properties_update)
-        self._properties_update_thread.start()
-
-    def on_property_update(self, callback):
-        """
-        Set callback that will be called on each property update
-
-        :param callback: callback on each model property update
+        :param callback: callback which will be called on each property update
         :type callback: :py:class:`Callable[[], None]`
         :return: None
         """
-        if not callable(callback):
-            raise Exception('Invalid argument: object should be callable')
-
-        self._on_property_update_callback = callback
+        self._on_property_update_callback = callable
 
     @property
     def model_id(self):

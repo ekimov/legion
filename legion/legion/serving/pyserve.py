@@ -229,7 +229,9 @@ def init_model(application):
     if legion.k8s.utils.is_code_run_in_cluster() and model_container.required_props:
         legion.model.properties.load()
 
-    model_container.start_background_operations()
+    # Start watch if callback are defined
+    if model_container.on_property_update_callback:
+        model_container.properties.set_update_callback(model_container.on_property_update_callback)
 
     return model_container
 

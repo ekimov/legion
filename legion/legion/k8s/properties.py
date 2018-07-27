@@ -19,6 +19,8 @@ legion k8s properties class
 import base64
 import logging
 import time
+import threading
+import typing
 
 import kubernetes
 import kubernetes.client
@@ -68,6 +70,9 @@ class K8SPropertyStorage:
         self._saved = False  # type: bool
 
         self._k8s_namespace = k8s_namespace  # type: str
+
+        self._properties_update_thread = None  # type: threading.Thread or None
+        self._on_property_update_callback = None  # type: typing.Callable[[], None] or None
 
         LOGGER.info('Initializing {!r}'.format(self))
 
@@ -411,10 +416,55 @@ class K8SPropertyStorage:
 
         :return: None
         """
+        LOGGER.info('Creating watch for object {!r}'.format(self))
         with self._build_k8s_resource_watch() as watch:
             for (event_type, event_object) in watch.stream:
+                LOGGER.info('Watch got new event. Type = {}'.format(event_type))
                 self.load()
                 yield (event_type, self.data)
+
+    def _update_thread(self):
+        """
+        Process update callback logic
+
+        :return: None
+        """
+        LOGGER.info('Properties watch thread has been started')
+        for event, new_data in self.watch():
+            LOGGER.info('Model have got information that properties storage had got update: {}'.format(event))
+            try:
+                self._on_property_update_callback()
+            except Exception as property_update_callback_invoke_exception:
+                LOGGER.exception('Cannot invoke model update callback',
+                                 exc_info=property_update_callback_invoke_exception)
+
+    def set_update_callback(self, callback):
+        """
+        Set update callback and start thread (thread starts only once)
+
+        :param callback: callback which will be called on each property update
+        :type callback: :py:class:`Callable[[], None]`
+        :return: None
+        """
+        if not callable(callback):
+            raise Exception('Invalid argument: object should be callable')
+
+        LOGGER.debug('Setting new property update callback for {!r}'.format(self))
+
+        self._on_property_update_callback = callback
+
+        if self._properties_update_thread:
+            LOGGER.debug('Thread already has been started')
+            return
+
+        if not self.last_load_time:
+            LOGGER.info('Properties has not been loaded, so watch thread will not be started')
+            return
+
+        self._properties_update_thread = threading.Thread(name='model-properties-update',
+                                                          daemon=True,
+                                                          target=self._update_thread)
+        self._properties_update_thread.start()
 
     def _build_k8s_resource_watch(self):
         """
