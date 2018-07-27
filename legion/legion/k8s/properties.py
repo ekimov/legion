@@ -58,16 +58,16 @@ class K8SPropertyStorage:
         """
         if not data:
             data = {}
-        self._state = data
+        self._state = data  # type: dict
 
-        self._cache_ttl = cache_ttl
+        self._cache_ttl = cache_ttl  # type: int or None
 
-        self._storage_name = legion.utils.normalize_name(storage_name, dns_1035=True)
+        self._storage_name = legion.utils.normalize_name(storage_name, dns_1035=True)  # type: str
 
-        self._last_load_time = None
-        self._saved = False
+        self._last_load_time = None  # type: float or None
+        self._saved = False  # type: bool
 
-        self._k8s_namespace = k8s_namespace
+        self._k8s_namespace = k8s_namespace  # type: str
 
         LOGGER.info('Initializing {!r}'.format(self))
 
@@ -139,6 +139,15 @@ class K8SPropertyStorage:
             self._k8s_namespace = legion.k8s.utils.get_current_namespace()
 
         return self._k8s_namespace
+
+    @property
+    def last_load_time(self):
+        """
+        Get last load time if it exists
+
+        :return: float or None -- last load time
+        """
+        return self._last_load_time
 
     @property
     def data(self):

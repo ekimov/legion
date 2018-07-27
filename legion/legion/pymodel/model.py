@@ -19,6 +19,9 @@ Python model
 import json
 import sys
 import os
+import threading
+import time
+import typing
 import zipfile
 
 import logging
@@ -166,6 +169,7 @@ class Model:
     ZIP_FILE_MODEL = 'model'
     ZIP_FILE_INFO = 'manifest.json'
     ZIP_FILE_PROPERTIES = 'properties'
+    ZIP_FILE_CALLBACK = 'callback'
 
     PROPERTY_MODEL_ID = 'model.id'
     PROPERTY_MODEL_VERSION = 'model.version'
@@ -190,6 +194,9 @@ class Model:
 
         self._endpoints = {}  # type: dict or None
         self._path = None  # type: str or None
+
+        self._properties_update_thread = None  # type: threading.Thread or None
+        self._on_property_update_callback = None  # type: typing.Callable[[], None] or None
 
         storage_name = model_properties_storage_name(self.model_id, self.model_version)
         self._properties = legion.k8s.K8SConfigMapStorage(storage_name,
@@ -227,6 +234,10 @@ class Model:
         with extract_archive_item(path, Model.ZIP_FILE_PROPERTIES) as properties_path:
             with open(properties_path, 'r') as properties_file:
                 self.properties.data = json.load(properties_file)
+
+        with extract_archive_item(path, Model.ZIP_FILE_CALLBACK) as callback_path:
+            with open(callback_path, 'rb') as callback_file:
+                self._on_property_update_callback = dill.load(callback_file)
 
     @staticmethod
     def load(path):
@@ -351,6 +362,11 @@ class Model:
                     json.dump(legion.model.properties.data, props_file)
                 stream.write(os.path.join(temp_directory.path, self.ZIP_FILE_PROPERTIES), self.ZIP_FILE_PROPERTIES)
 
+                # Add callback file
+                with open(os.path.join(temp_directory.path, self.ZIP_FILE_CALLBACK), 'wb') as callback_file:
+                    dill.dump(self._on_property_update_callback, callback_file, recurse=True)
+                stream.write(os.path.join(temp_directory.path, self.ZIP_FILE_CALLBACK), self.ZIP_FILE_CALLBACK)
+
                 # Add endpoints
                 for endpoint in self.endpoints.values():
                     path = self._build_endpoint_file_name(endpoint.name)
@@ -462,6 +478,51 @@ class Model:
         """
         self._export(apply_func, prepare_func, None, False, endpoint)
         return self
+
+    def _model_properties_update(self):
+        """
+        Logic for background operations thread
+
+        :return:
+        """
+        # TODO: Add watch here
+        self._on_property_update_callback()
+        time.sleep(1)
+
+    def start_background_operations(self):
+        """
+        Start background model operations
+
+        :return: None
+        """
+        if self._properties_update_thread:
+            raise Exception('Background operations already have been started')
+
+        if not self._on_property_update_callback:
+            LOGGER.info('Callback has not been registered in this model, skipping thread starting')
+            return
+
+        if not self.properties.last_load_time:
+            LOGGER.info('Properties has not been loaded, so watch thread will not be started')
+            return
+
+        self._properties_update_thread = threading.Thread(name='model-properties-update',
+                                                          daemon=True,
+                                                          target=self._model_properties_update)
+        self._properties_update_thread.start()
+
+    def on_property_update(self, callback):
+        """
+        Set callback that will be called on each property update
+
+        :param callback: callback on each model property update
+        :type callback: :py:class:`Callable[[], None]`
+        :return: None
+        """
+        if not callable(callback):
+            raise Exception('Invalid argument: object should be callable')
+
+        self._on_property_update_callback = callback
 
     @property
     def model_id(self):
