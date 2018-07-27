@@ -19,7 +19,6 @@ legion k8s properties class
 import base64
 import logging
 import time
-import functools
 
 import kubernetes
 import kubernetes.client
