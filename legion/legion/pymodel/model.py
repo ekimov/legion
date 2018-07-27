@@ -198,6 +198,7 @@ class Model:
         storage_name = model_properties_storage_name(self.model_id, self.model_version)
         self._properties = legion.k8s.K8SConfigMapStorage(storage_name,
                                                           cache_ttl=legion.config.MODEL_PROPERTIES_CACHE_TTL)
+        self._properties.set_update_callback(self.on_property_update_callback)
 
         send_header_to_stderr(legion.containers.headers.MODEL_ID, self.model_id)
         send_header_to_stderr(legion.containers.headers.MODEL_VERSION, self.model_version)
@@ -479,10 +480,13 @@ class Model:
     @property
     def on_property_update_callback(self):
         """
-        Get registered callback
+        Get registered callback or empty callback
 
         :return: :py:class:`Callable[[], None]` -- callback function
         """
+        if not self._on_property_update_callback:
+            return lambda: None
+
         return self._on_property_update_callback
 
     def on_property_update(self, callable):

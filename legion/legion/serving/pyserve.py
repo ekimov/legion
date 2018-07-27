@@ -20,7 +20,6 @@ Flask app
 import logging
 import os
 import itertools
-import threading
 
 import legion.config
 import legion.external.grafana
@@ -228,10 +227,7 @@ def init_model(application):
     # Force reload if code run in a cluster and model required any properties
     if legion.k8s.utils.is_code_run_in_cluster() and model_container.required_props:
         legion.model.properties.load()
-
-    # Start watch if callback are defined
-    if model_container.on_property_update_callback:
-        model_container.properties.set_update_callback(model_container.on_property_update_callback)
+        legion.model.properties.start_update_watcher()
 
     return model_container
 

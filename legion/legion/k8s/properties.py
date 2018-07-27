@@ -453,12 +453,18 @@ class K8SPropertyStorage:
 
         self._on_property_update_callback = callback
 
-        if self._properties_update_thread:
-            LOGGER.debug('Thread already has been started')
-            return
+    def start_update_watcher(self):
+        """
+        Start update watcher
 
+        :return: None
+        """
         if not self.last_load_time:
             LOGGER.info('Properties has not been loaded, so watch thread will not be started')
+            return
+
+        if self._properties_update_thread:
+            LOGGER.debug('Thread already has been started')
             return
 
         self._properties_update_thread = threading.Thread(name='model-properties-update',
