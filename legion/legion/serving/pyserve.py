@@ -30,6 +30,7 @@ import legion.k8s.properties
 import legion.k8s.utils
 from flask import Flask, Blueprint, request, jsonify, redirect, render_template
 from flask import current_app as app
+import uwsgidecorators
 
 LOGGER = logging.getLogger(__name__)
 blueprint = Blueprint('pyserve', __name__)
@@ -199,6 +200,18 @@ def page_not_found_handler(e):
                    valid_urls=build_sitemap()), e.code
 
 
+@uwsgidecorators.thread
+def update_properties(application):
+    """
+    Start updating properties in the another thread
+
+    :param application: Flask app
+    :type application: :py:class:`Flask.app`
+    :return: None
+    """
+    application.config['model'].properties.update_thread()
+
+
 def init_model(application):
     """
     Initialize model from app configuration
@@ -228,7 +241,7 @@ def init_model(application):
     # Force reload if code run in a cluster and model required any properties
     if legion.k8s.utils.is_code_run_in_cluster() and model_container.required_props:
         legion.model.properties.load()
-        legion.model.properties.start_update_watcher()
+        update_properties(application)
 
 
 def create_application():
