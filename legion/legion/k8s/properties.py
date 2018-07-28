@@ -470,7 +470,11 @@ class K8SPropertyStorage:
         self._properties_update_thread = threading.Thread(name='model-properties-update',
                                                           daemon=True,
                                                           target=self.update_thread)
+
+        self._properties_update_thread.daemon = True
+        LOGGER.info('Starting thread')
         self._properties_update_thread.start()
+        LOGGER.info('Thread has been started')
 
     def _build_k8s_resource_watch(self):
         """
