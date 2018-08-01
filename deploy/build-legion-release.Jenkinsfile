@@ -261,7 +261,11 @@ node {
                 }, 'Upload Legion package to PyPi': {
                     print('Upload Legion package to Pypi repository')
                     sh """
-                    twine upload -r ${params.PypiRepo} legion/dist/legion-${params.ReleaseVersion}.tar.gz
+                    if [ `curl -sI https://pypi.org/project/pkgconfig/${params.ReleaseVersion}/ |grep "200 OK" > /dev/null/ ' ]; then
+                    echo "Package already exists at Pypi repository" && exit 1
+                    else
+                    twine upload -r ${params.PyPiDistributionTargetName} legion/dist/legion-${params.ReleaseVersion}.tar.gz
+                    fi
                     """
                 }
             )
@@ -269,10 +273,10 @@ node {
             stage('Set GIT release Tag'){
                 print('Set Release tag')
                 sh '''
-                if [ `git tag |grep ${params.ReleaseVersion}"` ]; then
+                if [ `git tag |grep ${params.ReleaseVersion}` ]; then
                     git tag -d ${params.ReleaseVersion} && git push origin :refs/tags/${params.ReleaseVersion}
                 git tag -a ${params.ReleaseVersion}  -m "Release ${params.ReleaseVersion}"
-                git push origin :refs/tags/${params.ReleaseVersion}
+                git push origin ${params.ReleaseVersion}
                 '''
             }
         
